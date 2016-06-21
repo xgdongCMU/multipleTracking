@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "detectorBlob.h"
+#include "mag_tracking/detectorBlob.h"
 
 detectorBlob::detectorBlob(cv::SimpleBlobDetector::Params params)
 {

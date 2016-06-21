@@ -24,8 +24,8 @@ class track{
 public:
 	cv::Point2f predictedPosition;		// predicted position in pixel
 	cv::Point2f predictedPositionmm; 	// predicted position in mm	
-	cv::Point2f predictedVelocitymm;		// predicted velocity in mm/s
-    	cv::KalmanFilter KF;				// filter for this track
+	cv::Point2f predictedVelocitymm;	// predicted velocity in mm/s
+    cv::KalmanFilter KF;				// filter for this track
 
 	cv::Rect bbox;						// bounding box for new detection in mm
 	

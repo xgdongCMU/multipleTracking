@@ -1,19 +1,3 @@
-/*
- * Copyright [2016] [Xiaoguang Dong xgdong2013@gmail.com]
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include "opencv2/core/core.hpp"
@@ -26,8 +10,8 @@
 #include <queue>
 
 
-#include "detectorBlob.h"
-#include "multipleTracking.h"
+#include "mag_tracking/detectorBlob.h"
+#include "mag_tracking/multipleTracking.h"
 #include <mag_tracking/states_stickslip.h>
 using namespace std;
 
@@ -67,7 +51,6 @@ static void on_mouse( int event, int x, int y, int d, void *ptr )
 }
 
 cv::Mat drawing;
-vector< vector<cv::Point2f> > trajectories;
 multipleTracking * multipleTracker;
 bool isFirst = true;
 bool isTracking = false;
@@ -137,7 +120,6 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         {
           multipleTracker = new multipleTracking(scale,params);
           multipleTracker->initializeTracks(initPositions, initBboxes);
-          trajectories.resize(initPositions.size());
           drawing = cv::Mat::zeros( bw.size(), CV_8UC3 );
         }
         isFirst = false;
@@ -161,15 +143,23 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
         mag_tracking::states_stickslip state_msg;
         state_msg.robotNumber = tracks.size();
+        
+        //vector< vector<cv::Point2f> > trajectories;
+        //trajectories.resize(tracks.size());
         // draw prediction on the image
+
         for(int i = 0; i < tracks.size(); i++)
         {
             state_msg.positions.push_back(tracks[i].predictedPositionmm.x);
             state_msg.positions.push_back(tracks[i].predictedPositionmm.y);
             state_msg.velocities.push_back(tracks[i].predictedVelocitymm.x);
             state_msg.velocities.push_back(tracks[i].predictedVelocitymm.y);
-
+            //cout << "access" <<endl;
+            // draw predictions
             MyEllipse(multipleTracker->mask, tracks[i].predictedPosition);
+           
+           /*
+            // draw trajectories
             trajectories[i].push_back(tracks[i].predictedPosition);
             if(trajectories[i].size() > 100)
                 trajectories[i].erase(trajectories[i].begin());
@@ -180,10 +170,16 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
                     cv::line(multipleTracker->mask,trajectories[i][j],trajectories[i][j+1],
                         cv::Scalar(0,min(j,255),min(j*100/255,255)),4);
             }
+            */
+            // label the objects
+            char str[200];
+            sprintf(str,"%d",tracks[i].id);
+            cv::putText(multipleTracker->mask, str, tracks[i].predictedPosition, 
+                        cv::FONT_HERSHEY_PLAIN, 2,  cv::Scalar(0,0,255,255));           
+                         
         }
 
         states_pub.publish(state_msg);
-
         // Show in a window
         cv::imshow("view", multipleTracker->mask);
       }
@@ -227,7 +223,7 @@ int main(int argc, char **argv)
                BlobParams);  
 
   image_transport::ImageTransport it(nh);
-  image_transport::Subscriber sub = it.subscribe("/usb_cam/image_raw", 1, imageCallback);
+  image_transport::Subscriber sub = it.subscribe("/image", 1, imageCallback);
 
   cv::setMouseCallback("view",on_mouse, NULL); 
 

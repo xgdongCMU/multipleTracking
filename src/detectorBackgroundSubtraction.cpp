@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "detectorBackgroundSubtraction.h"
+#include "mag_tracking/detectorBackgroundSubtraction.h"
 
 detectorBackgroundSubtraction::detectorBackgroundSubtraction()
 {
