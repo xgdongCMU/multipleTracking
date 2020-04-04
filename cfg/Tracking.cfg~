@@ -1,0 +1,26 @@
+#! /usr/bin/env python
+
+PACKAGE='mag_tracking'
+NODE='tracking_3D_object_node'
+CONFIG='Tracking'
+
+
+from dynamic_reconfigure.parameter_generator_catkin import *
+
+gen = ParameterGenerator()
+
+gen.add("morph_size",    double_t, 	0, 	"morph_size", 21, 0, 100)
+gen.add("kernelSize",    double_t, 	0, 	"kernelSize", 5, 0, 10)
+gen.add("minArea",    	 double_t, 	0, 	"minArea", 800, 10, 1000)
+gen.add("maxArea",       double_t, 	0, 	"maxArea", 2200, 10, 3000)
+gen.add("blursize",    	 double_t, 	0, 	"blursize", 10, 1, 20)
+gen.add("LowH",    	 double_t, 	0, 	"LowH", 179, 0, 255)
+gen.add("HighH",    	 double_t, 	0, 	"HighH", 179, 0, 255)
+gen.add("LowS",    	 double_t, 	0, 	"LowS", 255, 0, 255)
+gen.add("HighS",    	 double_t, 	0, 	"HighS", 255, 0, 255)
+gen.add("LowV",    	 double_t, 	0, 	"LowV", 255, 0, 255)
+gen.add("HighV",    	 double_t, 	0, 	"HighV", 255, 0, 255)
+
+
+
+exit(gen.generate(PACKAGE, NODE, CONFIG))

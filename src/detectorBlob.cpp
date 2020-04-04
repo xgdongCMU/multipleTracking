@@ -15,30 +15,30 @@
  */
 #include "mag_tracking/detectorBlob.h"
 
-detectorBlob::detectorBlob(cv::SimpleBlobDetector::Params params)
+detectorBlob::detectorBlob(paramBase paramsB)
 {
-        /*
+        
         cv::SimpleBlobDetector::Params params;
         // Change thresholds
-        params.minThreshold = 50;
-        params.maxThreshold = 200;
+        params.minThreshold = paramsB.minThreshold;
+        params.maxThreshold = paramsB.maxThreshold;
 
         // Filter by Area.
-        params.filterByArea = true;
-        params.minArea = 100;
+        params.filterByArea = paramsB.filterByArea;
+        params.minArea = paramsB.minArea;
 
         // Filter by Circularity
-        params.filterByCircularity = false;
-        params.minCircularity = 0.1;
+        params.filterByCircularity = paramsB.filterByCircularity;
+        params.minCircularity = paramsB.minCircularity;
 
         // Filter by Convexity
-        params.filterByConvexity = true;
-        params.minConvexity = 0.87;
+        params.filterByConvexity = paramsB.filterByConvexity;
+        params.minConvexity = paramsB.minConvexity;
 
         // Filter by Inertia
-        params.filterByInertia = true;
-        params.minInertiaRatio = 0.01;
-        */
+        params.filterByInertia = paramsB.filterByInertia;
+        params.minInertiaRatio = paramsB.minInertiaRatio;
+        
 	blobDetector = cv::SimpleBlobDetector(params);
 
 }

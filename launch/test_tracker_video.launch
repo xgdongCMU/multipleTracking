@@ -1,0 +1,13 @@
+<launch>
+  <node name="videopub_node" pkg="mag_tracking" type="videopub_node" output="screen">
+   <param name="filename" type="string" value="$(find mag_tracking)/data/swarm.mp4"/>
+  </node>
+  
+<node name="tracker" pkg="mag_tracking" type="tracker_object_node" output="screen">
+	<param name="scale" value="0.02"/>
+	<remap from="/Goal" to="/waypoints"/> 
+</node>
+  
+  <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui" />  
+ 
+</launch>

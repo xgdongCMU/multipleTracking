@@ -10,13 +10,19 @@ find_package(catkin REQUIRED
 	std_msgs
 	image_transport 
 	cv_bridge
-  	message_generation	
+  	dynamic_reconfigure
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package(OpenCV REQUIRED )
+find_package(OpenCV 2 REQUIRED)
 
+
+
+
+generate_dynamic_reconfigure_options(
+	cfg/Tracking.cfg
+)
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
@@ -47,11 +53,11 @@ find_package(OpenCV REQUIRED )
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
- add_message_files(
-   FILES
-   states_stickslip.msg
+# add_message_files(
+#   FILES
+#   Message1.msg
 #   Message2.msg
- )
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -68,10 +74,10 @@ find_package(OpenCV REQUIRED )
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-   DEPENDENCIES
-   std_msgs  # Or other packages containing msgs
- )
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs  # Or other packages containing msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -103,10 +109,10 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-   INCLUDE_DIRS include
+  INCLUDE_DIRS include
 #  LIBRARIES mag_tracking
-  CATKIN_DEPENDS message_runtime roscpp rospy std_msgs 
-  DEPENDS system_lib
+  CATKIN_DEPENDS std_msgs roscpp rospy 
+#  DEPENDS system_lib
 )
 
 ###########
@@ -118,23 +124,28 @@ catkin_package(
 include_directories(include
                     ${catkin_INCLUDE_DIRS})
 SET(SOURCES
-src/munkres.h
 src/munkres.cpp
-src/detectorBackgroundSubtraction.h
 src/detectorBackgroundSubtraction.cpp
-src/detectorBlob.h
 src/detectorBlob.cpp
-src/multipleTracking.h
+src/detectorBase.cpp
+src/detectorContour.cpp
 src/multipleTracking.cpp
-src/track.h
-src/detection.h
-src/assignmentInfo.h
+
 )
 
-ADD_EXECUTABLE(tracker_node src/tracker_node.cpp ${SOURCES})
-target_link_libraries(tracker_node 
+
+ADD_EXECUTABLE(videopub_node node/videopub_node.cpp ${SOURCES})
+target_link_libraries(videopub_node 
 			${OpenCV_LIBS}
   			${catkin_LIBRARIES} )
+
+
+ADD_EXECUTABLE(tracker_object_node node/tracker_object_node.cpp ${SOURCES})
+target_link_libraries(tracker_object_node 
+			${OpenCV_LIBS}
+  			${catkin_LIBRARIES} )
+
+
 
 ## Declare a C++ library
 # add_library(mag_tracking

@@ -22,9 +22,51 @@
 
 class detection{
 public:
-	cv::Point2f centroid; 			// centroids of detections in pixel
-	cv::Rect  bbox;					// bounding box of detections in pixel
+	cv::Point2f centroid; 		// centroids of detections in pixel
+	cv::Rect  bbox;				// bounding box of detections in pixel
+	double heading;				// heading of the object in rad
+	int category;				// category of the object
 };
 
+class paramContour{
+public:
+	int minThreshold;
+	int maxThreshold;
+	int blursize;
+	int minArea;
+	int maxArea;
+	int kernelSize;
+};
 
+class paramBase{
+public:
+	int mode;
+
+	// mode 1
+	int blursize;
+	int kernelSize;
+	int maxArea;
+
+	// mode 2
+	// Filter by Threshold
+	int minThreshold;
+	int maxThreshold;
+
+	// Filter by Area
+	bool filterByArea;
+	int minArea;
+
+	// Filter by Circularity
+	bool filterByCircularity;
+	float minCircularity;
+
+	// Filter by Convexity
+	bool filterByConvexity;
+	float minConvexity;
+
+	// Filter by Inertia
+	bool filterByInertia;
+	float minInertiaRatio; 
+
+};
 #endif

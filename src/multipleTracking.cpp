@@ -15,13 +15,22 @@
 */
 #include "mag_tracking/multipleTracking.h"
 
-multipleTracking::multipleTracking(double scale, cv::SimpleBlobDetector::Params params)
+multipleTracking::multipleTracking(double scale, double width, double height, paramBase params)
 {
 	//detector = detectorBackgroundSubtraction();
-
+	//detector = new detectorBase(params);
+	
 	// params: pre-calibrate
-	detector = new detectorBlob(params);
+	detector = new detectorBase(params);	
+
+
 	this->scale = scale;
+	this->height = height;
+	this->width = width;
+	
+	processNoiseCov = 1e-2;
+	measurementNoiseCov = 1e-3;
+	errorCovPost = 1e-3;
 
 }
 
@@ -61,6 +70,8 @@ void multipleTracking::initializeTracks(vector<cv::Point2f> initPositions, vecto
 
 		// initialize bounding box
 		temp.bbox = bboxes[i];
+		temp.heading = 0;
+		temp.category = 0;
 
 		// initialize Kalman Filter
 		temp.KF 	= KalmanFilter(4,2,0,CV_32F);
@@ -71,14 +82,22 @@ void multipleTracking::initializeTracks(vector<cv::Point2f> initPositions, vecto
 		temp.KF.statePre.at<float>(2) = 0;
 		temp.KF.statePre.at<float>(3) = 0;
 		setIdentity(temp.KF.measurementMatrix);
-		setIdentity(temp.KF.processNoiseCov, Scalar::all(1e-2));
-		setIdentity(temp.KF.measurementNoiseCov, Scalar::all(0.001));
-		setIdentity(temp.KF.errorCovPost, Scalar::all(.001));
+		setIdentity(temp.KF.processNoiseCov, Scalar::all(processNoiseCov));
+		setIdentity(temp.KF.measurementNoiseCov, Scalar::all(measurementNoiseCov));
+		setIdentity(temp.KF.errorCovPost, Scalar::all(errorCovPost));
 
 		temp.id  	= i;
 		temp.age = 0;
 		temp.totalVisibleCount = 1;
 		temp.consecutiveInvisibleCount = 0;
+
+		// predict and assign trajectory information
+		temp.Nm = 100;
+		cv::Mat prediction = temp.KF.predict();
+		temp.predictedPosition = cv::Point2f(prediction.at<float>(0),prediction.at<float>(1));
+		temp.predictedPositionmm = cv::Point2f(prediction.at<float>(0)-width/2,height/2-prediction.at<float>(1))*scale;
+		temp.predictedVelocitymm= cv::Point2f(prediction.at<float>(2),-prediction.at<float>(3))*scale;		
+		temp.trajectory.push_back(temp.predictedPosition);
 
 		// push track
 		tracks.push_back(temp);
@@ -104,14 +123,18 @@ void multipleTracking::predictNewLocationsOfTracks()
 		// predict using Kalman Filter
 		cv::Mat prediction = tracks[i].KF.predict();
 		tracks[i].predictedPosition = cv::Point2f(prediction.at<float>(0),prediction.at<float>(1));
-		tracks[i].predictedPositionmm = cv::Point2f(prediction.at<float>(0),prediction.at<float>(1))*scale;
-		tracks[i].predictedVelocitymm= cv::Point2f(prediction.at<float>(2),prediction.at<float>(3))*scale;
+		tracks[i].predictedPositionmm = cv::Point2f(prediction.at<float>(0)-width/2,height/2-prediction.at<float>(1))*scale;
+		tracks[i].predictedVelocitymm= cv::Point2f(prediction.at<float>(2),-prediction.at<float>(3))*scale;	
 
 		// shift bounding box
 		cv::Rect temp = tracks[i].bbox;
 		tracks[i].bbox = cv::Rect(tracks[i].predictedPosition.x-temp.x - temp.width/2, 
 			tracks[i].predictedPosition.y-temp.y - temp.height/2,temp.width,temp.height);
 
+		// ensure maximum length of trajectory recording
+		tracks[i].trajectory.push_back(tracks[i].predictedPosition);
+		if(tracks[i].trajectory.size() > tracks[i].Nm)
+                tracks[i].trajectory.erase(tracks[i].trajectory.begin());
 	}
 }
 
@@ -218,6 +241,8 @@ void multipleTracking::updateAssignedTracks()
 
 		tracks[trackIdx].KF.correct(measurement);
 
+		tracks[trackIdx].heading = detections[detectionIdx].heading;
+		tracks[trackIdx].category = detections[detectionIdx].category;
 
         // Replace predicted bounding box with detected
         // bounding box.
@@ -271,7 +296,8 @@ void multipleTracking::createNewTracks()
 
 	    // bounding box
 	    temp.bbox 		= detections[assigns.unassignedDetections[i]].bbox;
-		
+		temp.heading 	= 0;
+		temp.category 	= 0;
 		// Kalman Filter
 		temp.KF 		= KalmanFilter(4,2,0,CV_32F);
 		double dt = 0.1;
@@ -281,13 +307,21 @@ void multipleTracking::createNewTracks()
 		temp.KF.statePre.at<float>(2) = 0;
 		temp.KF.statePre.at<float>(3) = 0;
 		setIdentity(temp.KF.measurementMatrix);
-		setIdentity(temp.KF.processNoiseCov, Scalar::all(1e-2));
-		setIdentity(temp.KF.measurementNoiseCov, Scalar::all(0.001));
-		setIdentity(temp.KF.errorCovPost, Scalar::all(.001));
+		setIdentity(temp.KF.processNoiseCov, Scalar::all(processNoiseCov));
+		setIdentity(temp.KF.measurementNoiseCov, Scalar::all(measurementNoiseCov));
+		setIdentity(temp.KF.errorCovPost, Scalar::all(errorCovPost));
 	    temp.id  		= getMaximumID()+1;			
 		temp.age 		= 0;
 		temp.totalVisibleCount = 1;
 		temp.consecutiveInvisibleCount = 0;
+
+		// record trajectories
+		temp.Nm = 20;
+		cv::Mat prediction = temp.KF.predict();
+		temp.predictedPosition = cv::Point2f(prediction.at<float>(0),prediction.at<float>(1));
+		temp.predictedPositionmm = cv::Point2f(prediction.at<float>(0)-width/2,height/2-prediction.at<float>(1))*scale;
+		temp.predictedVelocitymm= cv::Point2f(prediction.at<float>(2),-prediction.at<float>(3))*scale;		
+		temp.trajectory.push_back(temp.predictedPosition);
 
 		// push track
 		tracks.push_back(temp);

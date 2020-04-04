@@ -26,13 +26,14 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/features2d/features2d.hpp"
 
-#include "munkres.h"
-#include "detectorBackgroundSubtraction.h"
-#include "detectorBlob.h"
+#include "mag_tracking/munkres.h"
+#include "mag_tracking/detectorBackgroundSubtraction.h"
+#include "mag_tracking/detectorBlob.h"
+#include "mag_tracking/detectorBase.h"
 
-#include "track.h"
-#include "detection.h"
-#include "assignmentInfo.h"
+#include "mag_tracking/track.h"
+#include "mag_tracking/detection.h"
+#include "mag_tracking/assignmentInfo.h"
 
 using namespace std;
 
@@ -41,17 +42,26 @@ class multipleTracking{
 public:
 	// detectors: need to maintain
 	//detectorBackgroundSubtraction detector;
-	detectorBlob* detector;
+	//detectorBlob* detector;
+	detectorBase* detector;
 
 	// scale mm/pixel
-	double scale;						
-
+	double scale;
+	// image size						
+	double width;
+	double height;
+	
 	// mask of frame: no need to maintain
 	cv::Mat mask;
 
 	// detections: no need to maintain
 	vector<detection> detections;
 
+	// Filter parameters
+	double processNoiseCov;
+	double measurementNoiseCov;
+	double errorCovPost;
+	
 	// tracks: need to maintain
 	vector<track> tracks;
 	
@@ -59,7 +69,7 @@ public:
 	assignmentInfo assigns;
 
 public:
-	multipleTracking(double scale, cv::SimpleBlobDetector::Params params);
+	multipleTracking(double scale, double width, double height, paramBase params);
 	~multipleTracking();
 
 	// manually initialize the objects to be tracked

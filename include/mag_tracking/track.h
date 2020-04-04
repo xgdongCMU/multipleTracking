@@ -17,6 +17,9 @@
 #ifndef track_H
 #define track_H
 #include "opencv2/core/core.hpp"
+#include <vector>
+
+using namespace std;
 
 // tracks for maintaining different observed objects
 class track{
@@ -28,12 +31,16 @@ public:
     cv::KalmanFilter KF;				// filter for this track
 
 	cv::Rect bbox;						// bounding box for new detection in mm
-	
+    double heading;                     // heading in rad
+    int category;                       // category
+
     int id;
     int age;							// number of frames since starting
     int totalVisibleCount;				// total frames of exsisting
     int consecutiveInvisibleCount; 		// frames number of being consecutive invisible 
 
+    vector<cv::Point2f> trajectory; 	// record the positions back for maximum N frames
+    int Nm;
 };
 
 #endif

@@ -25,7 +25,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <vector>
-#include "detection.h"
+#include "mag_tracking/detection.h"
 
 using namespace std;
 using namespace cv;
@@ -35,7 +35,7 @@ class detectorBlob{
 public:
 	cv::Mat mask;
 	cv::SimpleBlobDetector blobDetector;
-	detectorBlob(cv::SimpleBlobDetector::Params params);
+	detectorBlob(paramBase params);
 	~detectorBlob();
 	vector<detection> detect(cv::Mat frame);
 
