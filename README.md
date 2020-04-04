@@ -2,7 +2,9 @@
 Xiaoguang Dong mm/year 04/2016
 
 ## Dependencies
-* image_transport
+* OpenCV <https://opencv.org/releases/>
+	* https://docs.opencv.org/master/d7/d9f/tutorial_linux_install.html
+
+* image_transport <>
 * cv_bridge
-* OpenCV
 * usb_cam [image acquisition]

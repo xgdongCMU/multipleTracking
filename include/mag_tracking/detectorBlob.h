@@ -16,16 +16,22 @@
 #ifndef detectorBlob_H
 #define detectorBlob_H
 
+#include "mag_tracking/detection.h"
+
+/*
 #include "opencv2/core/core.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/video/background_segm.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/features2d/features2d.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/features2d.hpp"
+#include "opencv2/opencv_modules.hpp"
+#include "opencv2/core.hpp"
+*/
+
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
 #include <vector>
-#include "mag_tracking/detection.h"
 
 using namespace std;
 using namespace cv;

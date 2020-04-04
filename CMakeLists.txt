@@ -15,9 +15,7 @@ find_package(catkin REQUIRED
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package(OpenCV 2 REQUIRED)
-
-
+find_package(OpenCV REQUIRED)
 
 
 generate_dynamic_reconfigure_options(
@@ -125,7 +123,7 @@ include_directories(include
                     ${catkin_INCLUDE_DIRS})
 SET(SOURCES
 src/munkres.cpp
-src/detectorBackgroundSubtraction.cpp
+#src/detectorBackgroundSubtraction.cpp
 src/detectorBlob.cpp
 src/detectorBase.cpp
 src/detectorContour.cpp

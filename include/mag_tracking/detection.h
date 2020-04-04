@@ -16,7 +16,14 @@
 
 #ifndef detection_H
 #define detection_H
-#include "opencv2/core/core.hpp"
+
+//#include "opencv2/core/core.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/video/background_segm.hpp"
+#include "opencv2/highgui.hpp"
+#include "opencv2/features2d.hpp"
+#include "opencv2/opencv_modules.hpp"
+#include "opencv2/core.hpp"
 
 // detections of a single frame for multiple blobs
 

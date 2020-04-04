@@ -21,16 +21,17 @@
 #include <iostream>
 #include <stdlib.h>
 #include <ctime>
+/*
 #include "opencv2/core/core.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/features2d/features2d.hpp"
+*/
 
 #include "mag_tracking/munkres.h"
 #include "mag_tracking/detectorBackgroundSubtraction.h"
 #include "mag_tracking/detectorBlob.h"
 #include "mag_tracking/detectorBase.h"
-
 #include "mag_tracking/track.h"
 #include "mag_tracking/detection.h"
 #include "mag_tracking/assignmentInfo.h"
