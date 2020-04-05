@@ -109,7 +109,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES mag_tracking
-  CATKIN_DEPENDS std_msgs roscpp rospy 
+  CATKIN_DEPENDS std_msgs roscpp rospy dynamic_reconfigure
 #  DEPENDS system_lib
 )
 
@@ -138,12 +138,10 @@ target_link_libraries(videopub_node
   			${catkin_LIBRARIES} )
 
 
-ADD_EXECUTABLE(tracker_object_node node/tracker_object_node.cpp ${SOURCES})
+ADD_EXECUTABLE(tracker_object_node node/tracker_reconfigure_node.cpp ${SOURCES})
 target_link_libraries(tracker_object_node 
 			${OpenCV_LIBS}
   			${catkin_LIBRARIES} )
-
-
 
 ## Declare a C++ library
 # add_library(mag_tracking

@@ -15,6 +15,9 @@
 #include <eigen3/Eigen/SVD>
 #include <eigen3/Eigen/Core>
 
+#include <mag_tracking/TrackingConfig.h>
+#include <dynamic_reconfigure/server.h>
+
 using namespace std;
 
 // model information
@@ -45,7 +48,7 @@ bool commandSet = false;
 
 
 /// image sources 
-cv::Mat image, bwRobot, bwObjects, src_grayR,src_grayO;
+cv::Mat image, image_mask, bwRobot, bwObjects, src_grayR,src_grayO;
 
 // multiple tracking
 multipleTracking * multipleTrackerRobot;
@@ -57,6 +60,8 @@ bool isTracking     = false;
 bool drawRadius     = true;
 
 image_transport::Publisher image_pub;
+image_transport::Publisher image_mask_pub;
+
 sensor_msgs::ImagePtr image_msg;
 
 /// mouse click callback function
@@ -64,11 +69,8 @@ vector<cv::Point2f> initPositions;
 vector<cv::Rect> initBboxes;
 
 // Parameters for robot
-paramBase paramsRobot;
-// thresholding image based on grey scale or color scale information
 int threshold_valueR = 0;
 int threshold_typeR = 3;;
-
 int RLowH = 0;
 int RHighH = 179;
 int RLowS = 0; 
@@ -87,31 +89,8 @@ int morph_elemR = 0;
 int morph_sizeR = 0;
 int morph_operatorR = 0;
 
+paramBase paramsRobot;
 
-// Parameters for robot
-paramBase paramsObjects;
-// thresholding image based on grey scale or color scale information
-int threshold_valueO = 0;
-int threshold_typeO = 3;;
-// threshold by color
-int OLowH = 0;
-int OHighH = 128;
-int OLowS = 0; 
-int OHighS = 222;
-int OLowV = 208;
-int OHighV = 255;
-
-// contour detection parameters
-int minAreaO = 100;
-int maxAreaO = 800;
-int minThresholdO = 100;
-int ratioO = 3;
-int kernelSizeO = 1;
-int blursizeO = 2;
-// morpology robot
-int morph_elemO = 0;
-int morph_sizeO = 1;
-int morph_operatorO = 0;
 
 // callback functions for image processing
 void DetectionRobot(int, void*){}
@@ -128,10 +107,46 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg);
 cv::Point2f image2world(cv::Point2f imagePoint, int width, int height, double scale);
 cv::Point2f world2image(cv::Point2f worldPoint, int width, int height, double scale);
 
+// dynamic reconfigure
+
+typedef mag_tracking::TrackingConfig Config;
+typedef dynamic_reconfigure::Server<Config> ReconfigureServer;
+void configureImage(Config& newconfig, uint32_t level)
+{
+  try{
+    threshold_valueR = newconfig.threshold_valueR;
+    threshold_typeR = newconfig.threshold_typeR;
+    
+    RLowH = newconfig.RLowH;
+    RHighH = newconfig.RHighH;
+    RLowS = newconfig.RLowS; 
+    RHighS = newconfig.RHighS;
+    RLowV = newconfig.RLowV;
+    RHighV = newconfig.RHighV;
+    // contour detection parameters
+    minAreaR = newconfig.minAreaR;
+    maxAreaR = newconfig.maxAreaR;
+    minThresholdR = 100;
+    ratioR = newconfig.ratioR;
+    kernelSizeR = newconfig.kernelSizeR;
+    blursizeR = newconfig.blursizeR;
+    // morpology operations
+    morph_elemR = 0;
+    morph_sizeR = 0;
+    morph_operatorR = 0;
+
+    isTracking = newconfig.isTracking;
+
+  } 
+  catch(const std::exception& e){
+        ROS_ERROR_STREAM("Cannot update configuration!" << e.what());
+  }
+
+}
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "tracker_node");
+  ros::init(argc, argv, "tracker");
   ros::NodeHandle nh("~");
 
   // mm/pixel
@@ -140,79 +155,48 @@ int main(int argc, char **argv)
   nh.param<double>("robotRatio",robotRatio,0.4);
   nh.param<double>("goalRatio",goalRatio,1.1);
 
-  cv::namedWindow("robot",cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("objects",cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("DetectionRobot",cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("DetectionObjects",cv::WINDOW_AUTOSIZE);
+  ReconfigureServer reconfigure_server_;
+  reconfigure_server_.setCallback(boost::bind(&configureImage, _1, _2));
 
-  cv::startWindowThread();
-  cv::setMouseCallback("robot",on_mouse, NULL); 
-
-  // parameters for tracking
-  //cv::createTrackbar("Operator:\n 0: Opening - 1: Closing \n 2: Gradient - 3: Top Hat \n 4: Black Hat", "DetectionRobot", &morph_operatorR, 4, DetectionRobot);
-  //cv::createTrackbar( "Element:\n 0: Rect - 1: Cross - 2: Ellipse", "DetectionRobot",&morph_elemR,2,DetectionRobot);
-  cv::createTrackbar( "Kernel size:\n 2n +1", "DetectionRobot",&morph_sizeR, 21,DetectionRobot);
-  //cv::createTrackbar( "Canny minThreshold:\n ", "DetectionRobot",&minThresholdR, 100,DetectionRobot );
-  cv::createTrackbar( "Canny kernelSize:\n ", "DetectionRobot",&kernelSizeR, 5,DetectionRobot );
-  //cv::createTrackbar( "Canny ratio:\n ", "DetectionRobot",&ratioR, 5, DetectionRobot );
-  cv::createTrackbar( "Contour minArea:\n ", "DetectionRobot",&minAreaR, 800,DetectionRobot);  
-  cv::createTrackbar( "Contour maxArea:\n ", "DetectionRobot",&maxAreaR, 2200,DetectionRobot);  
-  cv::createTrackbar( "Contour blursize:\n ", "DetectionRobot",&blursizeR, 10,DetectionRobot); 
-  //cv::createTrackbar( "Contour threshold:\n ", "DetectionRobot",&threshold_valueR, 255,DetectionRobot);  
-  //cv::createTrackbar( "Contour threshold_type: Binary \n 1: Binary Inverted \n 2: Truncate \n 3: To Zero \n 4: To Zero Inverted", "DetectionRobot",&threshold_typeR, 4,DetectionRobot); 
-  
-  cv::createTrackbar("LowH", "DetectionRobot", &RLowH, 179,DetectionRobot); //Hue (0 - 179)
-  cv::createTrackbar("HighH", "DetectionRobot", &RHighH, 179,DetectionRobot);
-  cv::createTrackbar("LowS", "DetectionRobot", &RLowS, 255,DetectionRobot); //Saturation (0 - 255)
-  cv::createTrackbar("HighS", "DetectionRobot", &RHighS, 255,DetectionRobot);
-  cv::createTrackbar("LowV", "DetectionRobot", &RLowV, 255,DetectionRobot); //Value (0 - 255)
-  cv::createTrackbar("HighV", "DetectionRobot", &RHighV, 255,DetectionRobot);
-
-  //cv::createTrackbar("Operator:\n 0: Opening - 1: Closing \n 2: Gradient - 3: Top Hat \n 4: Black Hat", "DetectionObjects", &morph_operatorO, 4, DetectionObjects);
-  //cv::createTrackbar( "Element:\n 0: Rect - 1: Cross - 2: Ellipse", "DetectionObjects",&morph_elemO,2,DetectionObjects);
-  cv::createTrackbar( "Kernel size:\n 2n +1", "DetectionObjects",&morph_sizeO, 21,DetectionObjects);
-  //cv::createTrackbar( "Canny minThreshold:\n ", "DetectionObjects",&minThresholdO, 100,DetectionObjects );
-  cv::createTrackbar( "Canny kernelSize:\n ", "DetectionObjects",&kernelSizeO, 5,DetectionObjects );
-  //cv::createTrackbar( "Canny ratio:\n ", "DetectionObjects",&ratioO, 5, DetectionObjects );
-  cv::createTrackbar( "Contour minArea:\n ", "DetectionObjects",&minAreaO, 800,DetectionObjects);  
-  cv::createTrackbar( "Contour maxArea:\n ", "DetectionObjects",&maxAreaO, 1200,DetectionObjects);  
-  cv::createTrackbar( "Contour blursize:\n ", "DetectionObjects",&blursizeO, 10,DetectionObjects); 
-  //cv::createTrackbar( "Contour threshold:\n ", "DetectionObjects",&threshold_valueO, 255,DetectionObjects);  
-  //cv::createTrackbar( "Contour threshold_type: Binary \n 1: Binary Inverted \n 2: Truncate \n 3: To Zero \n 4: To Zero Inverted", "DetectionObjects",&threshold_typeO, 4,DetectionObjects); 
-
-  cv::createTrackbar("LowH", "DetectionObjects", &OLowH, 179,DetectionObjects); //Hue (0 - 179)
-  cv::createTrackbar("HighH", "DetectionObjects", &OHighH, 179,DetectionObjects);
-  cv::createTrackbar("LowS", "DetectionObjects", &OLowS, 255,DetectionObjects); //Saturation (0 - 255)
-  cv::createTrackbar("HighS", "DetectionObjects", &OHighS, 255,DetectionObjects);
-  cv::createTrackbar("LowV", "DetectionObjects", &OLowV, 255,DetectionObjects); //Value (0 - 255)
-  cv::createTrackbar("HighV", "DetectionObjects", &OHighV, 255,DetectionObjects);
 
   image_transport::ImageTransport it(nh);
   image_transport::Subscriber sub       = it.subscribe("/image", 1, imageCallback);
+
   image_transport::Publisher image_pub  = it.advertise("/image_draw", 1);
-  
+  image_transport::Publisher image_mask_pub  = it.advertise("/image_mask", 1);
+
 
   ros::Rate loop_rate(10);
-  while (nh.ok()) {
+  while(nh.ok()) {
       if(!image.empty())
       {
         try{
               image_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
               image_pub.publish(image_msg);
+
         }
         catch (cv_bridge::Exception& e)
         {
           ROS_ERROR("Could not convert from image to 'bgr8'.");
         }
       }
-      
+
+
+      if(!image_mask.empty())
+      {
+        try{
+              image_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", image_mask).toImageMsg();
+              image_mask_pub.publish(image_msg);
+
+        }
+        catch (cv_bridge::Exception& e)
+        {
+          ROS_ERROR("Could not convert from image to 'bgr8'.");
+        }
+      }
       ros::spinOnce();
       loop_rate.sleep();
   }
-  cv::destroyWindow("robot");
-  cv::destroyWindow("objects");
-  cv::destroyWindow("DetectionObjects");
-  cv::destroyWindow("DetectionRobot");
 
 }
 
@@ -394,6 +378,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
       //// Robot
       //cv::threshold(src_grayR, bwRobot, threshold_valueR, 255,threshold_typeR);
+      //cv::threshold(src_grayR, bwRobot, threshold_valueR, 255,threshold_typeR);
       cv::inRange(src_grayR, Scalar(RLowH, RLowS, RLowV), Scalar(RHighH, RHighS, RHighV), bwRobot);
 
       paramsRobot.mode = 1;
@@ -412,36 +397,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
                                   cv::Size(2*morph_sizeR + 1, 2*morph_sizeR+1),
                                   cv::Point(morph_sizeR, morph_sizeR));
       cv::morphologyEx(bwRobot, bwRobot, morph_operatorR + 2, elementR);
-      
-      /// Objects
-      //cv::threshold(src_grayO, bwObjects, threshold_valueO, 255,threshold_typeO);
-      cv::inRange(src_grayO, Scalar(OLowH, OLowS, OLowV), Scalar(OHighH, OHighS, OHighV), bwObjects);
 
-      paramsObjects.mode = 1;
-      // Filter by Threshold
-      paramsObjects.minThreshold = minThresholdO;
-      paramsObjects.maxThreshold = (ratioO >= 2?ratioO:2)*minThresholdO;
-      // Filter by Area
-      paramsObjects.minArea = minAreaO;
-      paramsObjects.maxArea = maxAreaO;
-      paramsObjects.kernelSize = kernelSizeO >= 2? kernelSizeO:2;
-      // Blur kernel size
-      paramsObjects.blursize = blursizeO >= 1? blursizeO:1;
-      
-      cv::Mat elementO = cv::getStructuringElement(morph_elemO, 
-                                  cv::Size(2*morph_sizeO + 1, 2*morph_sizeO+1),
-                                  cv::Point(morph_sizeO, morph_sizeO));
-      cv::morphologyEx(bwObjects, bwObjects, morph_operatorO + 2, elementO);
-      
       if(!isTracking)
       {
           detectorBase* detectorRobot = new detectorBase(paramsRobot);
-          vector<detection> detectionsRobot = detectorRobot->detect(bwRobot);        
-          cv::imshow("robot",detectorRobot->mask);
-         
-          detectorBase* detectorObjects = new detectorBase(paramsObjects);
-          vector<detection> detectionsObjects = detectorObjects->detect(bwObjects);        
-          cv::imshow("objects",detectorObjects->mask);
+          vector<detection> detectionsRobot = detectorRobot->detect(bwRobot);            
+          image_mask = detectorRobot->mask;
+
       }
       
       char k = (char)cv::waitKey(30);
@@ -451,17 +413,25 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
       {
           if(isFirst)
           {
+
+            cv::Point2f temp0 = cv::Point2f(0,0);
+            cv::Rect temp1 = cv::Rect(0,0,10,10);
+
+            initPositions.push_back(temp0); 
+            initBboxes.push_back(temp1);    
+            cout << "Initialized points number: "<<initPositions.size() << endl;  
+            cout << "Point: x = " << temp0.x << ", y = "<<temp0.y << endl; 
+
+
             multipleTrackerRobot = new multipleTracking(scale,image.size().width, image.size().height,paramsRobot);
             multipleTrackerRobot->initializeTracks(initPositions, initBboxes);
 
-            multipleTrackerObjects = new multipleTracking(scale,image.size().width, image.size().height,paramsObjects);
-            multipleTrackerObjects->initializeTracks(initPositions, initBboxes);
 
           }
           isFirst = false;
 
           multipleTrackerRobot->trackingOneStep(bwRobot);
-          multipleTrackerObjects->trackingOneStep(bwObjects);
+          //multipleTrackerObjects->trackingOneStep(bwObjects);
 
           if(multipleTrackerRobot->mask.empty())
           {  
@@ -471,12 +441,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
           // Get the tracking data and draw on the image
           vector<track> tracksRobot = multipleTrackerRobot->getTracks();
           drawRobotOnImage(tracksRobot);
-          vector<track> tracksObjects = multipleTrackerObjects->getTracks();
-          drawObjectsOnImage(tracksObjects);
 
           // Show in a window
-          cv::imshow("robot", multipleTrackerRobot->mask);
-          cv::imshow("objects", multipleTrackerObjects->mask);
+          image_mask = multipleTrackerRobot->mask;
       }
 
       char k1 = (char)cv::waitKey(30);
@@ -485,7 +452,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         isTracking  = false;
         isFirst     = true;
         delete multipleTrackerRobot;
-        delete multipleTrackerObjects;
+        //delete multipleTrackerObjects;
       }
     
   }

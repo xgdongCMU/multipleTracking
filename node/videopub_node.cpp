@@ -12,6 +12,8 @@ int main(int argc, char** argv)
 {
   ros::init(argc, argv, "image_publisher");
   ros::NodeHandle nh("~");
+
+
   std::string filename;
   int framerate;
 
